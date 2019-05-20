@@ -46,16 +46,7 @@ struct RR {
         }
 
         printf("Q0: RR\nNome\t\tBurst CPU\tE/S restantes\n");
-        Processo *head = q.front();
-        q.pop_front();
-        this->print_process(head);
-        q.push_back(head);
-        while (head != q.front()) {
-            Processo * aux = q.front();
-            q.pop_front();
-            this->print_process(aux);
-            q.push_back(aux);
-        }
+        for (Processo *p : q) this->print_process(p);
     }
 
     // Diz se existe algum processo nessa fila ou não
@@ -88,18 +79,7 @@ struct FCFS {
     void push(Processo * p) { q.push_back(p); }
 
     void increase_wait(){
-        if(!q.empty()){
-            Processo *head = q.front();
-            head->wait++;
-            q.pop_front();
-            q.push_back(head);
-            while (head != q.front()) {
-                Processo * aux = q.front();
-                aux->wait++;
-                q.pop_front();
-                q.push_back(aux);
-            }
-        }
+        for (Processo *p : q) p->wait++;
     }
 
     // Printa na tela informações sobre todos os processos na fila
@@ -109,16 +89,7 @@ struct FCFS {
         }
 
         printf("Q1: FCFS\nNome\t\tBurst CPU\tE/S restantes\n");
-        Processo *head = q.front();
-        q.pop_front();
-        this->print_process(head);
-        q.push_back(head);
-        while (head != q.front()) {
-            Processo * aux = q.front();
-            q.pop_front();
-            this->print_process(aux);
-            q.push_back(aux);
-        }
+        for (Processo* p : q) this->print_process(p);
     }
     
     
@@ -202,27 +173,11 @@ struct CtrlES {
                 t_es);
         }
 
-        if (!q.empty()){
-            printf("E/S\nNome\t\tE/S restantes\n");
-            Processo *head = q.front();
-            q.pop_front();
+        for (Processo *p : q)
             printf(
                 "%s\t\t%d\n",
-                head->name.c_str(), 
-                head->n_es);
-            q.push_back(head);
-            while (head != q.front()) {
-                Processo * aux = q.front();
-                q.pop_front();
-
-                printf(
-                    "%s\t\t%d\n",
-                    aux->name.c_str(), 
-                    aux->n_es);
-
-                q.push_back(aux);
-            }
-        }
+                p->name.c_str(), 
+                p->n_es);
     }
 };
 
