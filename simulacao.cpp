@@ -8,7 +8,7 @@ struct Processo {
     int n_es;       // Número de operações de E/S do processo
     int cur_cpu;    // Variável auxiliar para manter controle de quanto do Burst CPU já foi executado
     string name;    // Nome do processo (P1, P2, P3, ...)
-    int wait;     // tempo de espera do processo na fila q1
+    int wait;       // tempo de espera do processo na fila q1
 
     Processo(int b, int es, int id): 
         b_cpu(b), n_es(es), cur_cpu(1), cur_b_cpu(b), wait(-1) {
@@ -22,7 +22,7 @@ struct Processo {
 // Fila de processos Q0
 struct RR {
     int quantum;            // Quantum do RR
-    queue<Processo*> q;     // Fila de processos do RR
+    list<Processo*> q;     // Fila de processos do RR
 
     RR(int q): quantum(q) {}
     
@@ -37,7 +37,7 @@ struct RR {
     }
     
     // Adiciona um processo na fila
-    void push(Processo * p) { q.push(p); }
+    void push(Processo * p) { q.push_back(p); }
 
     // Printa na tela informações sobre todos os processos na fila
     void show() {
@@ -47,14 +47,14 @@ struct RR {
 
         printf("Q0: RR\nNome\t\tBurst CPU\tE/S restantes\n");
         Processo *head = q.front();
-        q.pop();
+        q.pop_front();
         this->print_process(head);
-        q.push(head);
+        q.push_back(head);
         while (head != q.front()) {
             Processo * aux = q.front();
-            q.pop();
+            q.pop_front();
             this->print_process(aux);
-            q.push(aux);
+            q.push_back(aux);
         }
     }
 
@@ -64,7 +64,7 @@ struct RR {
     // Retira e retorna o próximo processo a ser executado da fila
     Processo * next() {
         Processo * aux = q.front();
-        q.pop();
+        q.pop_front();
         return aux;
     }
 };
@@ -72,7 +72,7 @@ struct RR {
 
 // Fila de processos Q1
 struct FCFS {
-    queue<Processo*> q;     // Fila de processos do RR
+    list<Processo*> q;     // Fila de processos do RR
     
     // Printa na tela informações sobre o processo
     void print_process(Processo * p) {
@@ -85,19 +85,19 @@ struct FCFS {
     }
 
     // Adiciona um processo na fila
-    void push(Processo * p) { q.push(p); }
+    void push(Processo * p) { q.push_back(p); }
 
     void increase_wait(){
         if(!q.empty()){
             Processo *head = q.front();
             head->wait++;
-            q.pop();
-            q.push(head);
+            q.pop_front();
+            q.push_back(head);
             while (head != q.front()) {
                 Processo * aux = q.front();
                 aux->wait++;
-                q.pop();
-                q.push(aux);
+                q.pop_front();
+                q.push_back(aux);
             }
         }
     }
@@ -110,14 +110,14 @@ struct FCFS {
 
         printf("Q1: FCFS\nNome\t\tBurst CPU\tE/S restantes\n");
         Processo *head = q.front();
-        q.pop();
+        q.pop_front();
         this->print_process(head);
-        q.push(head);
+        q.push_back(head);
         while (head != q.front()) {
             Processo * aux = q.front();
-            q.pop();
+            q.pop_front();
             this->print_process(aux);
-            q.push(aux);
+            q.push_back(aux);
         }
     }
     
@@ -128,7 +128,7 @@ struct FCFS {
     // Retira e retorna o próximo processo a ser executado da fila
     Processo * next() {
         Processo * aux = q.front();
-        q.pop();
+        q.pop_front();
         return aux;
     }
     
@@ -138,7 +138,7 @@ struct FCFS {
     }
     
     void pop(){
-        q.pop();
+        q.pop_front();
         return;
     }
 
@@ -150,12 +150,12 @@ struct CtrlES {
     int t_es;               // Tempo padrão de 1 operação de E/S para todos os processos
     int cur_es;             // Tempo de E/S relativo ao processos que está em E/S neste momento
     Processo * em_es;       // Processo que está executando a operação de E/S neste momento
-    queue<Processo*> q;     // Fila de processos esperando para realizar sua operação de E/S
+    list<Processo*> q;     // Fila de processos esperando para realizar sua operação de E/S
 
     CtrlES(): em_es(nullptr), cur_es(0), remaining_es(0) {}
     
     // Adiciona um processo na fila
-    void push(Processo *p) { q.push(p); }
+    void push(Processo *p) { q.push_back(p); }
     
     // Diz se existe algum processo realizando E/S
     bool ociosa() { return em_es == nullptr; }
@@ -165,7 +165,7 @@ struct CtrlES {
         if (!q.empty()) {
             em_es = q.front();
             cur_es = 1;
-            q.pop();
+            q.pop_front();
             remaining_es=1;
         } 
     }
@@ -205,22 +205,22 @@ struct CtrlES {
         if (!q.empty()){
             printf("E/S\nNome\t\tE/S restantes\n");
             Processo *head = q.front();
-            q.pop();
+            q.pop_front();
             printf(
                 "%s\t\t%d\n",
                 head->name.c_str(), 
                 head->n_es);
-            q.push(head);
+            q.push_back(head);
             while (head != q.front()) {
                 Processo * aux = q.front();
-                q.pop();
+                q.pop_front();
 
                 printf(
                     "%s\t\t%d\n",
                     aux->name.c_str(), 
                     aux->n_es);
 
-                q.push(aux);
+                q.push_back(aux);
             }
         }
     }
@@ -287,7 +287,7 @@ struct Escalonador {
                 Processo * p = ctrlES->executa();
                 ctrlES->remaining_es = 1;
                 // Senao, Retorna processo para Q0:RR
-                if (p != nullptr) { q0->push(p); p->n_es--; p->cur_cpu=0; p->cur_b_cpu = p->b_cpu; ctrlES->remaining_es=0;}
+                if (p != nullptr) { q0->push(p); p->n_es--; p->cur_cpu=1; p->cur_b_cpu = p->b_cpu; ctrlES->remaining_es=0;}
             }
 
             // Se CPU não vazia
