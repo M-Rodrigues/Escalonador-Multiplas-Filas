@@ -306,6 +306,9 @@ struct Escalonador {
                     p_cpu = nullptr;
                     fila = -1;
                     cur_cpu = 0;
+                    
+                    // Adicionando saida do processo da cpu no diagrama
+                    gantt->add_saida_cpu(t);
                 }
                 else {
                 // Senao
@@ -317,6 +320,9 @@ struct Escalonador {
                     
                         p_cpu = nullptr;
                         fila = -1;
+
+                        // Adicionando saida do processo da cpu no diagrama
+                        gantt->add_saida_cpu(t);
                     }
                 }
             }                 
