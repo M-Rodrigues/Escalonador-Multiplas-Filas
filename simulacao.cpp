@@ -183,6 +183,42 @@ struct CtrlES {
     }
 };
 
+struct GanttDiagram {
+    struct GanttItem {
+        string process_name;
+        int t_entrada;
+        int t_saida;
+
+        GanttItem(Processo* p, int t_ent):
+            process_name(p->name),
+            t_entrada(t_ent),
+            t_saida(-1) {}
+    };
+
+    list<GanttItem*> l;
+    
+    void add_entrada_cpu(Processo* p, int t) {
+        l.push_back(new GanttItem(p, t));
+    }
+
+    void add_saida_cpu(int t) {
+        l.back()->t_saida = t;
+    }
+
+    void show() {
+        printf("Diagrama de Gantt\n");
+        for (GanttItem* it : l) this->print_item(it);
+    }
+
+    void print_item(GanttItem* it) {
+        printf(
+            "%s\t%d\t%d\n",
+            it->process_name.c_str(),
+            it->t_entrada,
+            it->t_saida
+            );
+    }
+};
 
 struct Escalonador {
     int t = 0;                      // Contador de tempo global
@@ -190,6 +226,8 @@ struct Escalonador {
     FCFS *q1;                       // Fila com menor prioridade
 
     CtrlES * ctrlES;                // Controlador de E/S
+
+    GanttDiagram * gantt;           // Diagrama de Gantt dos processos na CPU
 
     Processo * p_cpu = nullptr;     // Processo que está sendo executado na CPU
     int fila = -1;                  // flag indicando de qual fila é o processo que está na CPU
@@ -215,6 +253,7 @@ struct Escalonador {
 
     Escalonador(RR *q0, FCFS *q1): q0(q0), q1(q1) {
         ctrlES = new CtrlES(); ctrlES->t_es = 25;
+        gantt = new GanttDiagram();
     }
 
     // Inicio da simulação
@@ -287,12 +326,20 @@ struct Escalonador {
                 if (!q0->empty()) {
                     p_cpu = q0->next();
                     // p_cpu->cur_cpu = 1;
+                    
+                    // Adicionando entrada no diagrama de Gantt
+                    gantt->add_entrada_cpu(p_cpu, t);
+                    
                     fila = 0;
                 } 
                 else {
                 // Senao, Se Q1:FCFS não vazia -> escalona de FCSF
                     if (!q1->empty()) {
                         p_cpu = q1->next();
+
+                        // Adicionando entrada no diagrama de Gantt
+                        gantt->add_entrada_cpu(p_cpu, t);
+    
                         p_cpu->cur_cpu=1;
                         fila = 1;
                     } else {
@@ -306,13 +353,17 @@ struct Escalonador {
             if (t == 100) break;
 
             string s; cin >> s;
-            
+
             q1->increase_wait(); //aumenta a espera dos processos na fila q1
             this->print_state();
         }
 
         printf("***** FIM *****\n");
         this->print_state();
+    }
+
+    void show_gantt_diagram() {
+        gantt->show();
     }
 };
 
@@ -334,6 +385,8 @@ int main() {
     }
 
     escal->start();
+
+    escal->show_gantt_diagram();
 
     return 0;
 }
