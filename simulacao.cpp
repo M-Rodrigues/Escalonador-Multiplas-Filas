@@ -4,12 +4,14 @@ using namespace std;
 // Modelagem do Processo
 struct Processo {
     int b_cpu;      // Tempo de Burst CPU do processo
+    int cur_b_cpu;  // Tempo de Burst CPU que ainda resta para o processo executar
     int n_es;       // Número de operações de E/S do processo
     int cur_cpu;    // Variável auxiliar para manter controle de quanto do Burst CPU já foi executado
     string name;    // Nome do processo (P1, P2, P3, ...)
+    int wait;     // tempo de espera do processo na fila q1
 
     Processo(int b, int es, int id): 
-        b_cpu(b), n_es(es), cur_cpu(0) {
+        b_cpu(b), n_es(es), cur_cpu(1), cur_b_cpu(b), wait(-1) {
         name = "P"; name.push_back('0'+id);
     }
 
@@ -30,7 +32,7 @@ struct RR {
             "%s\t\t(%d/%d)\t\t%d\n",
             p->name.c_str(), 
             p->cur_cpu, 
-            p->b_cpu, 
+            p->cur_b_cpu, 
             p->n_es);
     }
     
@@ -78,12 +80,27 @@ struct FCFS {
             "%s\t\t(%d/%d)\t\t%d\n",
             p->name.c_str(), 
             p->cur_cpu, 
-            p->b_cpu, 
+            p->cur_b_cpu, 
             p->n_es);
     }
 
     // Adiciona um processo na fila
     void push(Processo * p) { q.push(p); }
+
+    void increase_wait(){
+        if(!q.empty()){
+            Processo *head = q.front();
+            head->wait++;
+            q.pop();
+            q.push(head);
+            while (head != q.front()) {
+                Processo * aux = q.front();
+                aux->wait++;
+                q.pop();
+                q.push(aux);
+            }
+        }
+    }
 
     // Printa na tela informações sobre todos os processos na fila
     void show() {
@@ -114,16 +131,28 @@ struct FCFS {
         q.pop();
         return aux;
     }
+    
+    Processo * front() {
+        Processo * aux = q.front();
+        return aux;
+    }
+    
+    void pop(){
+        q.pop();
+        return;
+    }
+
 };
 
 // Controlador de operações de E/S
 struct CtrlES {
+    int remaining_es;       // Indica se ainda resta E/S  aser executada
     int t_es;               // Tempo padrão de 1 operação de E/S para todos os processos
     int cur_es;             // Tempo de E/S relativo ao processos que está em E/S neste momento
     Processo * em_es;       // Processo que está executando a operação de E/S neste momento
     queue<Processo*> q;     // Fila de processos esperando para realizar sua operação de E/S
 
-    CtrlES(): em_es(nullptr), cur_es(0) {}
+    CtrlES(): em_es(nullptr), cur_es(0), remaining_es(0) {}
     
     // Adiciona um processo na fila
     void push(Processo *p) { q.push(p); }
@@ -137,6 +166,7 @@ struct CtrlES {
             em_es = q.front();
             cur_es = 1;
             q.pop();
+            remaining_es=1;
         } 
     }
 
@@ -215,7 +245,7 @@ struct Escalonador {
         printf("CPU: %s\t(%d,%d)\tfila: %d\n",
             p_cpu == nullptr ? "-" : p_cpu->name.c_str(),
             p_cpu == nullptr ? 0 : p_cpu->cur_cpu,
-            p_cpu == nullptr ? 0 : p_cpu->b_cpu,
+            p_cpu == nullptr ? 0 : p_cpu->cur_b_cpu,
             fila);
         printf("-------------------------------------\n");
         q0->show(); 
@@ -233,17 +263,31 @@ struct Escalonador {
     // Inicio da simulação
     void start() {
         while (1) {
+            q1->increase_wait(); //aumenta a espera dos processos na fila q1
             this->print_state();
-            
+            if(!q1->empty()){
+                Processo *p = q1->front();
+                if(p->wait==25){  //o processo da frente da fila q1 chegou ao tempo maximo de espera
+                //entao esse processo deve ir para a fila q0 
+                    p->wait=-1;
+                    q1->pop();
+                    q0->push(p);
+                    p->cur_cpu=0;
+                }
+            }
+           
+
             // Se nenhum processo em ES -> Puxar algum processo da fila de ES
             if (ctrlES->ociosa()) {
                 ctrlES->escalonar();
-            } else {
+            } 
+            else {
             // Se processo em ES
                 // Se ainda tem ES -> mantem e executa
                 Processo * p = ctrlES->executa();
+                ctrlES->remaining_es = 1;
                 // Senao, Retorna processo para Q0:RR
-                if (p != nullptr) { q0->push(p); p->n_es--; p->cur_cpu=0; }
+                if (p != nullptr) { q0->push(p); p->n_es--; p->cur_cpu=0; p->cur_b_cpu = p->b_cpu; ctrlES->remaining_es=0;}
             }
 
             // Se CPU não vazia
@@ -251,7 +295,7 @@ struct Escalonador {
                 // Executa 1 mseg
                 p_cpu->cur_cpu++;
                 // Se fim burst_cpu
-                if (p_cpu->cur_cpu == p_cpu->b_cpu) {
+                if (p_cpu->cur_cpu == p_cpu->cur_b_cpu) {
                     // Se possui E/S -> fila de E/S
                     if (p_cpu->has_es()) {
                         ctrlES->push(p_cpu);
@@ -269,6 +313,8 @@ struct Escalonador {
                     // Se processo de RR e fim do quantum -> vai pra FCFS
                     if (fila == 0 and p_cpu->cur_cpu == q0->quantum) {
                         q1->push(p_cpu);
+                        p_cpu->cur_b_cpu -= q0->quantum;
+                        p_cpu->wait=-1;
                     
                         p_cpu = nullptr;
                         fila = -1;
@@ -282,15 +328,16 @@ struct Escalonador {
                     p_cpu = q0->next();
                     // p_cpu->cur_cpu = 1;
                     fila = 0;
-                } else {
+                } 
+                else {
                 // Senao, Se Q1:FCFS não vazia -> escalona de FCSF
                     if (!q1->empty()) {
                         p_cpu = q1->next();
                         p_cpu->cur_cpu=1;
                         fila = 1;
                     } else {
-                        // Senao -> Fim da simulação
-                        break;
+                        // Senao -> Fim da simulação (caso tenha acabado as operaçoes de ES também)
+                        if(ctrlES->remaining_es==0) {break;}
                     }
                 }
             }
