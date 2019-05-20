@@ -68,11 +68,12 @@ struct FCFS {
     // Printa na tela informações sobre o processo
     void print_process(Processo * p) {
         printf(
-            "%s\t\t(%d/%d)\t\t%d\n",
+            "%s\t\t(%d/%d)\t\t%d\t\t%d\n",
             p->name.c_str(), 
             p->cur_cpu, 
             p->cur_b_cpu, 
-            p->n_es);
+            p->n_es,
+            p->wait);
     }
 
     // Adiciona um processo na fila
@@ -88,7 +89,7 @@ struct FCFS {
             printf("Q1: FCFS\t\tVazia!\n"); return;
         }
 
-        printf("Q1: FCFS\nNome\t\tBurst CPU\tE/S restantes\n");
+        printf("Q1: FCFS\nNome\t\tBurst CPU\tE/S restantes\tT espera\n");
         for (Processo* p : q) this->print_process(p);
     }
     
@@ -147,7 +148,6 @@ struct CtrlES {
 
     // Realiza 1ms de operação E/S para o processo em E/S neste momento. Atualiza os atributos
     Processo * executa() {
-        cur_es++;
         
         // Fim da operação de E/S
         if (cur_es == t_es) {
@@ -156,6 +156,8 @@ struct CtrlES {
             cur_es = 0;
             return aux;
         }
+        
+        cur_es++;
         return nullptr; 
     }
 
@@ -195,20 +197,20 @@ struct Escalonador {
 
     // Printa na tela todas as informações sobre Q0,Q1,CtrlES e CPU
     void print_state() {
-        printf("\n-------------------------------------\n");
+        printf("\n--------------------------------------------------------------\n");
         printf("T = %d\n",t);
         printf("CPU: %s\t(%d,%d)\tfila: %d\n",
             p_cpu == nullptr ? "-" : p_cpu->name.c_str(),
             p_cpu == nullptr ? 0 : p_cpu->cur_cpu,
             p_cpu == nullptr ? 0 : p_cpu->cur_b_cpu,
             fila);
-        printf("-------------------------------------\n");
+        printf("\n");
         q0->show(); 
         printf("\n"); 
         q1->show();
         printf("\n"); 
         ctrlES->show();
-        printf("-------------------------------------\n\n"); 
+        printf("--------------------------------------------------------------\n\n"); 
     }
 
     Escalonador(RR *q0, FCFS *q1): q0(q0), q1(q1) {
@@ -217,13 +219,16 @@ struct Escalonador {
 
     // Inicio da simulação
     void start() {
+        this->print_state();
         while (1) {
             q1->increase_wait(); //aumenta a espera dos processos na fila q1
-            this->print_state();
+            
             if(!q1->empty()){
                 Processo *p = q1->front();
-                if(p->wait==25){  //o processo da frente da fila q1 chegou ao tempo maximo de espera
-                //entao esse processo deve ir para a fila q0 
+                if(p->wait==25){
+                    //  o processo da frente da fila q1 chegou ao tempo maximo 
+                    // de espera entao esse processo deve ir para a fila q0 
+                    
                     p->wait=-1;
                     q1->pop();
                     q0->push(p);
@@ -292,7 +297,7 @@ struct Escalonador {
                         fila = 1;
                     } else {
                         // Senao -> Fim da simulação (caso tenha acabado as operaçoes de ES também)
-                        if(ctrlES->remaining_es==0) {break;}
+                        if(ctrlES->remaining_es==0) { break; }
                     }
                 }
             }
@@ -301,7 +306,11 @@ struct Escalonador {
             if (t == 100) break;
 
             string s; cin >> s;
+            this->print_state();
         }
+
+        printf("***** FIM *****\n");
+        this->print_state();
     }
 };
 
