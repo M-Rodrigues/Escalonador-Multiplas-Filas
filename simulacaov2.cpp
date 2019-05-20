@@ -138,9 +138,9 @@ struct CtrlES {
     void escalonar() {
         if (!q.empty()) {
             em_es = q.front();
-            cur_es = 1;
+            cur_es = 0;
             q.pop_front();
-            remaining_es=1;
+            remaining_es = 1;
         } 
     }
 
@@ -148,7 +148,8 @@ struct CtrlES {
     bool empty() { return q.empty(); }
 
     // Realiza 1ms de operação E/S para o processo em E/S neste momento. Atualiza os atributos
-    Processo * executa() {
+    Processo * executa() {  
+        cur_es++;
         
         // Fim da operação de E/S
         if (cur_es == t_es) {
@@ -158,7 +159,6 @@ struct CtrlES {
             return aux;
         }
         
-        cur_es++;
         return nullptr; 
     }
 
@@ -271,6 +271,8 @@ struct Escalonador {
             } else if (!q1->empty()) {
                 p_cpu = q1->next();
                 fila = 1;
+                p_cpu->cur_cpu = 0;
+                
                 gantt->add_entrada_cpu(p_cpu, t);
             }
         } else {
@@ -278,9 +280,11 @@ struct Escalonador {
             if (fila == 1 and !q0->empty()) {
                 // Volta pra q1
                 q1->return_process(p_cpu);
-                
+                gantt->add_saida_cpu(t);
+
                 // Escalona de q0
                 p_cpu = q0->next();
+                gantt->add_entrada_cpu(p_cpu, t);
             }
         }
 
@@ -296,8 +300,15 @@ struct Escalonador {
         if (!ctrlES->ociosa()) {
             Processo * p = ctrlES->executa();
             ctrlES->remaining_es = 1;
+
             // Senao, Retorna processo para Q0:RR
-            if (p != nullptr) { q0->push(p); p->n_es--; p->cur_cpu = 0; p->cur_b_cpu = p->b_cpu; ctrlES->remaining_es = 0; }
+            if (p != nullptr) { 
+                q0->push(p); 
+                p->n_es--; 
+                p->cur_cpu = 0; 
+                p->cur_b_cpu = p->b_cpu; 
+                ctrlES->remaining_es = 0; 
+            }
         }
 
         // Aumenta tempo de espera
