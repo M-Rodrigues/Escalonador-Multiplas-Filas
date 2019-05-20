@@ -221,7 +221,7 @@ struct Escalonador {
     void start() {
         this->print_state();
         while (1) {
-            q1->increase_wait(); //aumenta a espera dos processos na fila q1
+            // q1->increase_wait(); //aumenta a espera dos processos na fila q1
             
             if(!q1->empty()){
                 Processo *p = q1->front();
@@ -306,6 +306,8 @@ struct Escalonador {
             if (t == 100) break;
 
             string s; cin >> s;
+            
+            q1->increase_wait(); //aumenta a espera dos processos na fila q1
             this->print_state();
         }
 
