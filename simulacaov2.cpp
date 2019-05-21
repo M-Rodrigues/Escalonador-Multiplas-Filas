@@ -211,6 +211,10 @@ struct GanttDiagram {
         for (GanttItem* it : l) this->print_item(it);
     }
 
+    int entrada_cpu(){
+        return l.back()-> t_entrada;
+    }
+
     void print_item(GanttItem* it) {
         printf(
             "%s\t%d\t%d\n",
@@ -280,7 +284,9 @@ struct Escalonador {
             if (fila == 1 and !q0->empty()) {
                 // Volta pra q1
                 q1->return_process(p_cpu);
-                gantt->add_saida_cpu(t);
+                gantt->add_saida_cpu(t-1);
+                p_cpu->cur_b_cpu -= (t - gantt->entrada_cpu());
+                p_cpu->cur_cpu=0;
 
                 // Escalona de q0
                 p_cpu = q0->next();
@@ -294,7 +300,7 @@ struct Escalonador {
 
     void execute() {
         // Executa CPU
-        p_cpu->cur_cpu++;
+        if(p_cpu!=nullptr) p_cpu->cur_cpu++;
 
         // Executa E/S
         if (!ctrlES->ociosa()) {
@@ -317,32 +323,34 @@ struct Escalonador {
 
     void post_processing() {
         // tira da CPU
-        if (p_cpu->cur_cpu == p_cpu->cur_b_cpu) {
-            // para E/S
-            if (p_cpu->has_es()) {
-                ctrlES->push(p_cpu);
-            } 
-            // para FIM DO PROCESSO
-            else {
-                delete p_cpu;
-            }
+        if(p_cpu!=nullptr){
+            if (p_cpu->cur_cpu == p_cpu->cur_b_cpu) {
+                // para E/S
+                if (p_cpu->has_es()) {
+                    ctrlES->push(p_cpu);
+                } 
+                // para FIM DO PROCESSO
+                else {
+                    delete p_cpu;
+                }
 
-            p_cpu = nullptr;
-            fila = -1;
-            cur_cpu = 0;
-
-            gantt->add_saida_cpu(t);
-        } else {
-            // para fila Q1
-            if (fila == 0 and p_cpu->cur_cpu == q0->quantum) {
-                q1->push(p_cpu);
-                p_cpu->cur_b_cpu -= q0->quantum;
-                p_cpu->wait = 0;
-            
                 p_cpu = nullptr;
                 fila = -1;
-                
+                cur_cpu = 0;
+
                 gantt->add_saida_cpu(t);
+            } else {
+                // para fila Q1
+                if (fila == 0 and p_cpu->cur_cpu == q0->quantum) {
+                    q1->push(p_cpu);
+                    p_cpu->cur_b_cpu -= q0->quantum;
+                    p_cpu->wait = 0;
+                
+                    p_cpu = nullptr;
+                    fila = -1;
+                    
+                    gantt->add_saida_cpu(t);
+                }
             }
         }
 
@@ -370,7 +378,8 @@ struct Escalonador {
             and q0->empty()
             and q1->empty()
             and ctrlES->ociosa()
-            and ctrlES->empty();
+            and ctrlES->empty()
+            and ctrlES->remaining_es==0;
     }
 
     void begin() {
