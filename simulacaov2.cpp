@@ -11,7 +11,7 @@ struct Processo {
     int wait;       // tempo de espera do processo na fila q1
 
     Processo(int b, int es, int id): 
-        b_cpu(b), n_es(es), cur_cpu(0), cur_b_cpu(b), wait(-1) {
+        b_cpu(b), n_es(es), cur_cpu(0), cur_b_cpu(b), wait(0) {
         name = "P"; name.push_back('0'+id);
     }
 
@@ -86,7 +86,7 @@ struct FCFS {
     // Printa na tela informações sobre todos os processos na fila
     void show() {
         if (q.empty()) {
-            printf("Q1: FCFS\t\tVazia!\n"); return;
+            printf("Q1: FCFS\tVazia!\n"); return;
         }
 
         printf("Q1: FCFS\nNome\t\tBurst CPU\tE/S restantes\tT espera\n");
@@ -120,7 +120,7 @@ struct FCFS {
 
 // Controlador de operações de E/S
 struct CtrlES {
-    int remaining_es;       // Indica se ainda resta E/S  aser executada
+    int remaining_es;       // Indica se ainda resta E/S a ser executada
     int t_es;               // Tempo padrão de 1 operação de E/S para todos os processos
     int cur_es;             // Tempo de E/S relativo ao processos que está em E/S neste momento
     Processo * em_es;       // Processo que está executando a operação de E/S neste momento
@@ -257,7 +257,7 @@ struct Escalonador {
     }
 
     Escalonador(RR *q0, FCFS *q1): q0(q0), q1(q1), fila(-1) {
-        ctrlES = new CtrlES(); ctrlES->t_es = 25;
+        ctrlES = new CtrlES(); ctrlES->t_es = 20;
         gantt = new GanttDiagram();
     }
 
@@ -302,7 +302,7 @@ struct Escalonador {
             ctrlES->remaining_es = 1;
 
             // Senao, Retorna processo para Q0:RR
-            if (p != nullptr) { 
+            if (p != nullptr) {  //o processo p terminou a ES
                 q0->push(p); 
                 p->n_es--; 
                 p->cur_cpu = 0; 
@@ -311,7 +311,7 @@ struct Escalonador {
             }
         }
 
-        // Aumenta tempo de espera
+        // Aumenta tempo de espera dos processos na fila Q1
         q1->increase_wait();
     }
 
@@ -405,7 +405,6 @@ int main() {
         q0->push(p);
     }
 
-    // escal->start();
     escal->begin();
 
     escal->show_gantt_diagram();
